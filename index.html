@@ -236,7 +236,24 @@ footer a{color:var(--sea)}
 const TZ = "Australia/Adelaide";
 const PL = {lat:-34.7263, lon:135.8597};
 const BBOX = "-35.2,132.2,-31.4,137.9";
-const CACHE_KEY = "eyre-camp-geo-v1";
+const CACHE_KEY = "eyre-camp-geo-v2";
+
+// Council campgrounds from the Lower Eyre Council and Tumby Bay District Council camping pages (read 31 Oct 2026).
+// Always shown; OpenStreetMap sites within 1 km are dropped in their favour. approx = placed at the end of the access road
+// or a nearby campsite, not an exact campground location. f = estimated coast direction, used only if no coastline is found.
+const LE = "Lower Eyre Council · book at eyrepeninsula.com/camping · dogs on a lead";
+const COUNCIL = [
+  {name:"Farm Beach Campground", lat:-34.49667, lon:135.39778, f:270, note:`${LE} · 40 sites · $20/night · toilets · fires in a 30 cm steel drum only`},
+  {name:"Louth Bay Campground", lat:-34.54191, lon:135.92977, f:90, note:`${LE} · 8 numbered sites only · $20/night · toilets · no fires`},
+  {name:"Seal Corner Campground", lat:-34.60300, lon:135.43250, f:270, approx:true, note:`${LE} · 4WD only, very rocky track · $10/night · no toilets · fires in a 30 cm steel drum only`},
+  {name:"Frenchman's North & South", lat:-34.41522, lon:135.36498, f:270, approx:true, note:`${LE} · North 4 sites, South 10 sites (limited caravan access) · $10/night · no toilets · fires except in bushfire season`},
+  {name:"Greenly Beach South, Sheoak & Wattle", lat:-34.36685, lon:135.36750, f:270, approx:true, note:`${LE} · Greenly South 10 sites $15/night, Sheoak 6 and Wattle 1 site $10/night · no toilets · no camping at Greenly Beach North`},
+  {name:"Tom Bott & Eucalypt (Coles Point)", lat:-34.36944, lon:135.35389, f:270, approx:true, note:`${LE} · Tom Bott 28 sites, Eucalypt 3 sites · $10/night · no toilets`},
+  {name:"Point Drummond Campground", lat:-34.14972, lon:135.24444, f:250, note:`${LE} · 3 sites · $10/night · no toilets · fires in a 30 cm steel drum only`},
+  {name:"Fishery Bay Campground", lat:-34.91095, lon:135.68902, f:180, note:`${LE} · 8 sites · $20/night · toilets · fires in a 30 cm steel drum only`},
+  {name:"Lipson Cove Campground", lat:-34.26292, lon:136.26052, f:100, note:"Tumby Bay District Council · 12 sites · $10/night · pets, caravans and motorhomes OK · book online"},
+  {name:"Tumby Bay South Beach Camp", lat:-34.46469, lon:136.11649, f:90, approx:true, note:"Tumby Bay District Council · about 14 km south of Tumby Bay · $10/night · no toilets · gravel road fine for cars and vans · placed at Redcliff campsite: check the location"}
+];
 
 // Hand list of well-known coastal sites. facing = estimated direction the shore faces (degrees), used only if the coastline cannot be loaded.
 const KNOWN = [
@@ -249,7 +266,7 @@ const KNOWN = [
   ["Fishery Bay",-34.910,135.690,170],["Coffin Bay",-34.620,135.471,160],["Yangie Bay, Coffin Bay NP",-34.623,135.332,90],
   ["Big Yangie, Coffin Bay NP",-34.590,135.300,270],["Black Springs, Coffin Bay NP",-34.540,135.271,90],
   ["Morgans Landing, Coffin Bay NP",-34.510,135.250,100],["Point Sir Isaac, Coffin Bay NP",-34.435,135.190,80],
-  ["Farm Beach",-34.470,135.330,260],["Greenly Beach",-34.180,135.170,250],["Sheringa Beach",-33.840,134.830,230],
+  ["Farm Beach",-34.470,135.330,260],["Sheringa Beach",-33.840,134.830,230],
   ["Walkers Rocks",-33.565,134.858,260],["Elliston (Waterloo Bay)",-33.646,134.887,270],["Venus Bay",-33.236,134.672,150],
   ["Port Kenny",-33.170,134.690,220],["Baird Bay",-33.140,134.370,260],["Streaky Bay foreshore",-32.796,134.212,300],
   ["Perlubie Beach",-32.725,134.345,260],["Smoky Bay",-32.377,133.935,260],
@@ -333,7 +350,8 @@ async function loadSites(force){
   const cached = load(CACHE_KEY, null);
   if (!force && cached && Date.now() - cached.at < 30*864e5) return cached.sites;
   status("Finding campgrounds and coastline (first load can take 20 to 40 seconds)…");
-  const around = KNOWN.map(k => `way["natural"="coastline"](around:2500,${k[1]},${k[2]});`).join("");
+  const around = KNOWN.map(k => `way["natural"="coastline"](around:2500,${k[1]},${k[2]});`).join("")
+    + COUNCIL.map(c => `way["natural"="coastline"](around:3000,${c.lat},${c.lon});`).join("");
   const q = `[out:json][timeout:120];
 nwr["tourism"~"^(camp_site|caravan_site)$"](${BBOX})->.c;
 .c out center tags;
@@ -351,9 +369,14 @@ out geom;`;
     if (!f || f.km > 3) continue;
     out.push({id:c.type[0]+c.id, name, lat, lon, facing:f.facing, coastKm:f.km, src:"osm", kind:c.tags.tourism==="caravan_site"?"Caravan park":"Campground"});
   }
+  const km = (a, b) => Math.hypot((a.lon-b.lon)*111.32*Math.cos(rad(a.lat)), (a.lat-b.lat)*110.574);
+  for (let i = out.length-1; i >= 0; i--) if (COUNCIL.some(c => km(out[i], c) < 1)) out.splice(i, 1);
+  for (const c of COUNCIL){
+    const f = coastFacing(c.lat, c.lon, ways), ok = f && f.km <= 3;
+    out.push(councilSite(c, ok ? f.facing : c.f, ok ? f.km : null));
+  }
   // Hand-list sites fill gaps only: skip any already in OpenStreetMap (same first word within 10 km, or anything within 1.5 km)
   // and any whose rough location is not within 1.5 km of the coastline.
-  const km = (a, b) => Math.hypot((a.lon-b.lon)*111.32*Math.cos(rad(a.lat)), (a.lat-b.lat)*110.574);
   const word = n => n.toLowerCase().split(/[\s,(]+/)[0];
   for (const [name, lat, lon] of KNOWN){
     const p = {lat, lon};
@@ -374,8 +397,12 @@ function dedupe(list){
   }
   return keep;
 }
+function councilSite(c, facing, coastKm){
+  return {id:"g"+c.name, name:c.name, lat:c.lat, lon:c.lon, facing, coastKm, est:coastKm == null, src:"council", kind:"Council campground", note:c.note, approx:!!c.approx};
+}
 function fallbackSites(){
-  return KNOWN.map(([name, lat, lon, f]) => ({id:"k"+name, name, lat, lon, facing:f, coastKm:null, src:"list", est:true, kind:"Known site"}));
+  return COUNCIL.map(c => councilSite(c, c.f, null)).concat(
+    KNOWN.map(([name, lat, lon, f]) => ({id:"k"+name, name, lat, lon, facing:f, coastKm:null, src:"list", est:true, kind:"Known site"})));
 }
 
 /* ---------- weather ---------- */
@@ -476,7 +503,7 @@ const arrow = d => `<svg class="arr" viewBox="0 0 14 14" style="transform:rotate
 /* ---------- render ---------- */
 let RES = {};
 function visibleSites(){
-  return SITES.filter(s => (s.src === "custom" || s.coastKm == null || s.coastKm <= S.coastKm) &&(S.region === "all" || region(s.lat, s.lon) === S.region));
+  return SITES.filter(s => (s.src === "custom" || s.src === "council" || s.coastKm == null || s.coastKm <= S.coastKm) &&(S.region === "all" || region(s.lat, s.lon) === S.region));
 }
 function render(){
   RES = {}; SITES.forEach(s => RES[s.id] = analyse(s));
@@ -527,7 +554,10 @@ function renderGrid(){
 }
 function detail(s){
   const w = WX[s.id], R = RES[s.id];
-  const src = s.src === "osm" ? `${esc(s.kind)} from OpenStreetMap` : s.src === "custom" ? `Added by you${s.access ? " · "+esc(s.access) : ""}` : "From the hand-made list (location approximate)";
+  const src = s.src === "osm" ? `${esc(s.kind)} from OpenStreetMap`
+    : s.src === "custom" ? `Added by you${s.access ? " · "+esc(s.access) : ""}`
+    : s.src === "council" ? `${esc(s.note)}${s.approx ? " · location approximate" : ""}`
+    : "From the hand-made list (location approximate)";
   const coast = s.coastKm == null ? "Coast direction estimated by hand" :`${s.coastKm < 0.1 ? "On the shore" : (s.coastKm.toFixed(1)+" km from the sea")}`;
   let strip = "", last = "";
   for (const h of R.hours){
