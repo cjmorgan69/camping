@@ -6,6 +6,8 @@
 <title>Eyre Coast Camp Windows</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 /* Layout: one column of instrument panels — settings, Port Lincoln outlook, best windows, then a site × day grid that expands into an hourly strip */
 :root{
@@ -112,6 +114,22 @@ table.grid{border-collapse:separate;border-spacing:3px;width:100%;min-width:560p
 .hr .rain{color:var(--sea);font-weight:700}
 .daymark{flex:none;writing-mode:vertical-rl;transform:rotate(180deg);font:700 .7rem var(--body);color:var(--sea);padding:0 2px;border-left:2px solid var(--sea)}
 .note{font-size:.82rem;color:var(--muted);max-width:75ch}
+/* add-a-campground dialog */
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,25,25,.55)}
+.dlg{display:grid;gap:12px;padding:16px}
+.dlg header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dlg .x{border:none;background:none;font-size:1.4rem;line-height:1;color:var(--muted);padding:4px 8px}
+#map{height:260px;border-radius:8px;border:1px solid var(--line);z-index:0}
+.form2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.form2 label{display:grid;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
+.form2 .wide{grid-column:1/-1}
+.form2 input,.form2 select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:8px 10px;width:100%;min-width:0}
+.coastinfo{font-size:.88rem;color:var(--sea);min-height:1.3em}
+.dlg .btnrow{justify-content:flex-end}
+.mine{color:var(--sand);font-size:.75rem;font-weight:700;margin-left:4px}
+button.danger{color:var(--bad);border-color:var(--bad)}
+@media (max-width:480px){.form2{grid-template-columns:1fr}#map{height:220px}}
 footer{font-size:.8rem;color:var(--muted);display:grid;gap:6px}
 footer a{color:var(--sea)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -128,6 +146,7 @@ footer a{color:var(--sea)}
   <section class="panel">
     <div class="btnrow">
       <button class="primary" id="refresh" type="button">Refresh forecast</button>
+      <button id="addBtn" type="button">+ Add a campground</button>
       <span class="status" id="status">Starting…</span>
     </div>
     <details id="setbox">
@@ -186,6 +205,25 @@ footer a{color:var(--sea)}
     </div>
     <div class="gridwrap"><table class="grid" id="grid"></table></div>
   </section>
+
+  <dialog id="addDlg">
+    <form class="dlg" id="addForm" method="dialog">
+      <header><h2>Add a campground</h2><button class="x" type="button" id="addClose" aria-label="Close">×</button></header>
+      <p class="note" style="margin:0">Tap the map where you camp (zoom in for accuracy), or type the coordinates. Grey dots are campgrounds already in the list.</p>
+      <div id="map"></div>
+      <div class="btnrow" style="justify-content:flex-start"><button type="button" id="hereBtn">Use my location</button></div>
+      <div class="coastinfo" id="coastInfo"></div>
+      <div class="form2">
+        <label class="wide" for="cName">Campground name (as on WikiCamps or Parks SA)<input id="cName" required maxlength="80" placeholder="Moonlight Bay"></label>
+        <label for="cLat">Latitude (south is negative)<input id="cLat" inputmode="decimal" required placeholder="-34.5114"></label>
+        <label for="cLon">Longitude<input id="cLon" inputmode="decimal" required placeholder="135.9998"></label>
+        <label for="cFacing">Coast faces (towards the sea)<select id="cFacing"></select></label>
+        <label for="cDist">Distance to the sea (metres)<input id="cDist" inputmode="numeric" placeholder="worked out from the map"></label>
+        <label class="wide" for="cAccess">Vehicle access or notes (optional)<input id="cAccess" maxlength="80" placeholder="2WD / 4WD"></label>
+      </div>
+      <div class="btnrow"><button type="button" id="addCancel">Cancel</button><button class="primary" type="submit" id="addSave">Fetch weather &amp; add</button></div>
+    </form>
+  </dialog>
 
   <footer>
     <p>Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> forecast (BOM ACCESS-G and other models blended), Adelaide time. Campgrounds and coastline: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>, plus a short hand-made list of well-known sites. WikiCamps has no public data feed, so check site details, fees and access in WikiCamps before you go.</p>
@@ -438,7 +476,7 @@ const arrow = d => `<svg class="arr" viewBox="0 0 14 14" style="transform:rotate
 /* ---------- render ---------- */
 let RES = {};
 function visibleSites(){
-  return SITES.filter(s => (s.coastKm == null || s.coastKm <= S.coastKm) && (S.region === "all" || region(s.lat, s.lon) === S.region));
+  return SITES.filter(s => (s.src === "custom" || s.coastKm == null || s.coastKm <= S.coastKm) &&(S.region === "all" || region(s.lat, s.lon) === S.region));
 }
 function render(){
   RES = {}; SITES.forEach(s => RES[s.id] = analyse(s));
@@ -473,7 +511,7 @@ function renderGrid(){
   let h = `<thead><tr><th class="s">Campground · coast faces</th>${days.map(d=>`<th>${dayName(d).replace(/ \w+$/,"")}</th>`).join("")}</tr></thead><tbody>`;
   for (const s of list){
     const R = RES[s.id];
-    h += `<tr class="row" tabindex="0" data-id="${esc(s.id)}"><td class="name" title="${esc(s.name)}">${esc(s.name)}<span class="f">${compass(s.facing)}${s.est?"?":""}</span></td>`;
+    h += `<tr class="row" tabindex="0" data-id="${esc(s.id)}"><td class="name" title="${esc(s.name)}">${s.src==="custom"?`<span class="mine">★</span> `:""}${esc(s.name)}<span class="f">${compass(s.facing)}${s.est?"?":""}</span></td>`;
     for (const d of days){
       const o = R.byDay[d] || {good:0, ideal:0, win:false};
       const cls = o.win && o.ideal ? "p3" : o.ideal ? "p2" : o.good ? "p1" : "";
@@ -489,8 +527,8 @@ function renderGrid(){
 }
 function detail(s){
   const w = WX[s.id], R = RES[s.id];
-  const src = s.src === "osm" ? `${esc(s.kind)} from OpenStreetMap` : "From the hand-made list (location approximate)";
-  const coast = s.coastKm == null ? "Coast direction estimated by hand" : `${s.coastKm < 0.1 ? "On the shore" : (s.coastKm.toFixed(1)+" km from the sea")}`;
+  const src = s.src === "osm" ? `${esc(s.kind)} from OpenStreetMap` : s.src === "custom" ? `Added by you${s.access ? " · "+esc(s.access) : ""}` : "From the hand-made list (location approximate)";
+  const coast = s.coastKm == null ? "Coast direction estimated by hand" :`${s.coastKm < 0.1 ? "On the shore" : (s.coastKm.toFixed(1)+" km from the sea")}`;
   let strip = "", last = "";
   for (const h of R.hours){
     const t = w.time[h.i], d = t.slice(0,10);
@@ -503,7 +541,7 @@ function detail(s){
   const wins = R.wins.length ? R.wins.map(r => `<li>${whenText(w, r)} (${r.n} h, ${r.offPct}% offshore or calm)</li>`).join("") : `<li>No window of ${S.minHrs} hours or more.</li>`;
   return `<div class="dbox">
     <div class="dhead">${compassSVG(s.facing)}<div><b>${esc(s.name)}</b><div class="note">Coast faces ${compass(s.facing)} (${Math.round(s.facing)}°${s.est?", estimated":""}), so offshore wind is from the ${compass(s.facing+180)}. ${coast}. ${src}.</div></div>
-    <a href="https://www.google.com/maps/search/?api=1&query=${s.lat.toFixed(5)},${s.lon.toFixed(5)}" target="_blank" rel="noopener">Open in Maps</a></div>
+    <a href="https://www.google.com/maps/search/?api=1&query=${s.lat.toFixed(5)},${s.lon.toFixed(5)}" target="_blank" rel="noopener">Open in Maps</a>${s.src==="custom"?`<button type="button" class="danger" data-remove="${esc(s.id)}">Remove</button>`:""}</div>
     <ul class="note" style="margin:0;padding-left:18px">${wins}</ul>
     <div class="note">Each column is one hour: bar colour (green offshore or calm, yellow cross-shore, red fails), time, arrow showing where the wind blows to, wind and gust km/h, temperature, rain chance. Shaded columns are night.</div>
     <div class="hours">${strip}</div>
@@ -531,7 +569,15 @@ $("refresh").addEventListener("click", () => run(false));
 $("refresh").addEventListener("dblclick", () => run(true));
 
 function toggle(id){ openId = openId === id ? null : id; renderGrid(); }
-$("grid").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) toggle(r.dataset.id); });
+$("grid").addEventListener("click", e => {
+  const rm = e.target.closest("[data-remove]");
+  if (rm){
+    // two taps to remove, since the viewer has no confirm dialog
+    if (rm.dataset.armed){ removeCustom(rm.dataset.remove); return; }
+    rm.dataset.armed = "1"; rm.textContent = "Tap again to remove"; return;
+  }
+  const r = e.target.closest(".row"); if (r) toggle(r.dataset.id);
+});
 $("grid").addEventListener("keydown", e => { const r = e.target.closest(".row"); if (r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(r.dataset.id); } });
 $("wins").addEventListener("click", e => {
   const b = e.target.closest(".win"); if (!b) return;
@@ -548,6 +594,7 @@ async function run(forceSites){
     let note = "";
     try{ SITES = await loadSites(forceSites); }
     catch(e){ SITES = fallbackSites(); note = ` OpenStreetMap did not answer (${esc(e.message)}), so only the hand-made list is shown with estimated coast directions.`; }
+    SITES = SITES.concat(load(CUSTOM_KEY, []));
     WX = await loadWeather(SITES);
     render();
     const ts = new Intl.DateTimeFormat("en-AU",{timeZone:TZ,weekday:"short",hour:"numeric",minute:"2-digit"}).format(new Date());
@@ -556,6 +603,88 @@ async function run(forceSites){
     status(`The forecast did not load (${esc(e.message)}). Check your connection and tap Refresh.`, true);
   }finally{ busy = false; $("refresh").disabled = false; }
 }
+/* ---------- your own campgrounds ---------- */
+const CUSTOM_KEY = "eyre-camp-custom";
+const cf = $("cFacing");
+cf.innerHTML = `<option value="auto">Work it out from the coastline</option>` + PTS.map((p,i) => `<option value="${i*22.5}">${p} (${i*22.5}°)</option>`).join("");
+let map = null, pin = null, auto = null, lookupSeq = 0;
+
+function openAdd(){
+  $("addForm").reset(); auto = null; $("coastInfo").textContent = "";
+  $("addDlg").showModal();
+  if (!window.L){ $("map").innerHTML = `<p class="note" style="padding:12px">The map did not load. Type the coordinates instead.</p>`; return; }
+  if (!map){
+    map = L.map("map").setView([-33.6, 135.3], 7);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom:18, attribution:"© OpenStreetMap"}).addTo(map);
+    map.on("click", e => setPoint(e.latlng.lat, e.latlng.lng, false));
+  }
+  if (pin){ pin.remove(); pin = null; }
+  map.eachLayer(l => { if (l.options.camp) l.remove(); });
+  SITES.forEach(s => L.circleMarker([s.lat, s.lon], {camp:true, radius:4, weight:1, color:"#5d7270", fillOpacity:.6}).bindTooltip(s.name).addTo(map));
+  setTimeout(() => map.invalidateSize(), 50);
+}
+function setPoint(lat, lon, fly){
+  $("cLat").value = lat.toFixed(5); $("cLon").value = lon.toFixed(5);
+  if (map){
+    if (pin) pin.setLatLng([lat, lon]);
+    else pin = L.circleMarker([lat, lon], {radius:9, weight:3, color:"#c98b3a", fillColor:"#c98b3a", fillOpacity:.5}).addTo(map);
+    if (fly) map.setView([lat, lon], 14);
+  }
+  lookupCoast(lat, lon);
+}
+async function lookupCoast(lat, lon){
+  const seq = ++lookupSeq; auto = null;
+  $("coastInfo").textContent = "Checking the coastline here…";
+  try{
+    const j = await overpass(`[out:json][timeout:25];way["natural"="coastline"](around:3000,${lat},${lon});out geom;`);
+    if (seq !== lookupSeq) return;
+    auto = coastFacing(lat, lon, j.elements);
+    if (!auto){ $("coastInfo").textContent = "No coastline within 3 km of this spot. Choose the coast direction yourself."; return; }
+    $("coastInfo").textContent = `Coast faces ${compass(auto.facing)} (${Math.round(auto.facing)}°), about ${Math.round(auto.km*1000)} m from the sea.`;
+    if (!$("cDist").value) $("cDist").placeholder = Math.round(auto.km*1000);
+  }catch(e){
+    if (seq === lookupSeq) $("coastInfo").textContent = "The coastline did not load. Choose the coast direction yourself.";
+  }
+}
+["cLat","cLon"].forEach(k => $(k).addEventListener("change", () => {
+  const lat = parseFloat($("cLat").value), lon = parseFloat($("cLon").value);
+  if (isFinite(lat) && isFinite(lon)) setPoint(lat, lon, true);
+}));
+$("hereBtn").addEventListener("click", () => {
+  if (!navigator.geolocation){ $("coastInfo").textContent = "This browser cannot share your location."; return; }
+  $("coastInfo").textContent = "Finding your location…";
+  navigator.geolocation.getCurrentPosition(p => setPoint(p.coords.latitude, p.coords.longitude, true),
+    () => $("coastInfo").textContent = "Location was not shared. Tap the map instead.", {enableHighAccuracy:true, timeout:15000});
+});
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const lat = parseFloat($("cLat").value), lon = parseFloat($("cLon").value), name = $("cName").value.trim();
+  if (!name || !(lat < -10 && lat > -45) || !(lon > 110 && lon < 160)){ $("coastInfo").textContent = "Add a name and an Australian location (latitude is negative, for example -34.51)."; return; }
+  let facing = cf.value === "auto" ? auto?.facing : +cf.value;
+  if (facing == null){ $("coastInfo").textContent = "The coast direction is not known yet. Choose one from the list."; return; }
+  const m = parseFloat($("cDist").value);
+  const site = {id:"c"+Date.now(), name, lat, lon, facing, coastKm: isFinite(m) ? m/1000 : (auto ? auto.km : null),
+    est: cf.value !== "auto", src:"custom", kind:"Your campground", access:$("cAccess").value.trim()};
+  $("addSave").disabled = true; $("addSave").textContent = "Fetching weather…";
+  try{
+    Object.assign(WX, await loadWeather([site]));
+    save(CUSTOM_KEY, load(CUSTOM_KEY, []).concat(site));
+    SITES.push(site); openId = site.id;
+    $("addDlg").close(); render();
+    status(`<b>${esc(name)}</b> added. It is saved on this device only.`);
+    document.querySelector(`.row[data-id="${CSS.escape(site.id)}"]`)?.scrollIntoView({behavior:"smooth", block:"start"});
+  }catch(err){
+    $("coastInfo").textContent = `The weather did not load (${err.message}). Try again.`;
+  }finally{ $("addSave").disabled = false; $("addSave").textContent = "Fetch weather & add"; }
+});
+function removeCustom(id){
+  save(CUSTOM_KEY, load(CUSTOM_KEY, []).filter(s => s.id !== id));
+  SITES = SITES.filter(s => s.id !== id); delete WX[id]; openId = null; render();
+}
+$("addBtn").addEventListener("click", openAdd);
+$("addClose").addEventListener("click", () => $("addDlg").close());
+$("addCancel").addEventListener("click", () => $("addDlg").close());
+
 addEventListener("resize", () => { if (openId && Object.keys(RES).length) renderGrid(); });
 syncInputs();
 run(false);
