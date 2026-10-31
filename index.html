@@ -236,7 +236,7 @@ footer a{color:var(--sea)}
 const TZ = "Australia/Adelaide";
 const PL = {lat:-34.7263, lon:135.8597};
 const BBOX = "-35.2,132.2,-31.4,137.9";
-const CACHE_KEY = "eyre-camp-geo-v2";
+const CACHE_KEY = "eyre-camp-geo-v3";
 
 // Council campgrounds from the Lower Eyre Council and Tumby Bay District Council camping pages (read 31 Oct 2026).
 // Always shown; OpenStreetMap sites within 1 km are dropped in their favour. approx = placed at the end of the access road
@@ -252,6 +252,8 @@ const COUNCIL = [
   {name:"Point Drummond Campground", lat:-34.14972, lon:135.24444, f:250, note:`${LE} · 3 sites · $10/night · no toilets · fires in a 30 cm steel drum only`},
   {name:"Fishery Bay Campground", lat:-34.91095, lon:135.68902, f:180, note:`${LE} · 8 sites · $20/night · toilets · fires in a 30 cm steel drum only`},
   {name:"Lipson Cove Campground", lat:-34.26292, lon:136.26052, f:100, note:"Tumby Bay District Council · 12 sites · $10/night · pets, caravans and motorhomes OK · book online"},
+  // Second Creek: location, north-facing beach and offshore arc (any wind south of east) from the owner's local knowledge.
+  {name:"Second Creek Beach", lat:-34.4253691, lon:136.1100817, f:0, fixed:true, off:[90,270], note:"Tumby Bay District Council · $10/night via on-site honesty box"},
   {name:"Tumby Bay South Beach Camp", lat:-34.46469, lon:136.11649, f:90, approx:true, note:"Tumby Bay District Council · about 14 km south of Tumby Bay · $10/night · no toilets · gravel road fine for cars and vans · placed at Redcliff campsite: check the location"}
 ];
 
@@ -373,7 +375,7 @@ out geom;`;
   for (let i = out.length-1; i >= 0; i--) if (COUNCIL.some(c => km(out[i], c) < 1)) out.splice(i, 1);
   for (const c of COUNCIL){
     const f = coastFacing(c.lat, c.lon, ways), ok = f && f.km <= 3;
-    out.push(councilSite(c, ok ? f.facing : c.f, ok ? f.km : null));
+    out.push(councilSite(c, ok && !c.fixed ? f.facing : c.f, ok ? f.km : null));
   }
   // Hand-list sites fill gaps only: skip any already in OpenStreetMap (same first word within 10 km, or anything within 1.5 km)
   // and any whose rough location is not within 1.5 km of the coastline.
@@ -398,7 +400,7 @@ function dedupe(list){
   return keep;
 }
 function councilSite(c, facing, coastKm){
-  return {id:"g"+c.name, name:c.name, lat:c.lat, lon:c.lon, facing, coastKm, est:coastKm == null, src:"council", kind:"Council campground", note:c.note, approx:!!c.approx};
+  return {id:"g"+c.name, name:c.name, lat:c.lat, lon:c.lon, facing, coastKm, est:coastKm == null, src:"council", kind:"Council campground", note:c.note, approx:!!c.approx, fixed:!!c.fixed, off:c.off};
 }
 function fallbackSites(){
   return COUNCIL.map(c => councilSite(c, c.f, null)).concat(
@@ -431,7 +433,18 @@ function nowKey(){
   return `${p.year}-${p.month}-${p.day}T${p.hour}:00`;
 }
 // level 3 = good and offshore or calm, 2 = good but cross-shore, 0 = fails
-function hourLevel(w, i, facing){
+// Is wind-from direction d inside the clockwise arc a→b (degrees, ends excluded)?
+const inArc = (d, a, b) => { const x = norm(d - a), span = norm(b - a); return x > 0 && x < span; };
+function windRel(wd, site){
+  if (site.off){
+    // a local's offshore arc: inside = offshore, within 30° of either end = cross-shore
+    const [a, b] = site.off;
+    return inArc(wd, a, b) ? "offshore" : inArc(wd, a - 30, b + 30) || norm(wd - a) === 0 || norm(wd - b) === 0 ? "cross-shore" : "onshore";
+  }
+  const d = angDiff(wd, site.facing);
+  return d >= 120 ? "offshore" : d >= 60 ? "cross-shore" : "onshore";
+}
+function hourLevel(w, i, site){
   const ws = w.ws[i], wg = w.wg[i], t = w.t[i], day = w.day[i];
   const why = [];
   if (ws > S.maxWind) why.push("windy");
@@ -440,10 +453,7 @@ function hourLevel(w, i, facing){
   if (day ? t < S.tMin : t < S.nMin) why.push("cool");
   if (day && t > S.tMax) why.push("hot");
   let rel = "calm";
-  if (ws >= S.calm){
-    const d = angDiff(w.wd[i], facing);
-    rel = d >= 120 ? "offshore" : d >= 60 ? "cross-shore" : "onshore";
-  }
+  if (ws >= S.calm) rel = windRel(w.wd[i], site);
   if (S.dirMode !== "any"){
     if (rel === "onshore") why.push("onshore");
     if (rel === "cross-shore" && S.dirMode === "off") why.push("cross-shore");
@@ -457,7 +467,7 @@ function analyse(site){
   const nk = nowKey();
   let start = w.time.findIndex(t => t >= nk); if (start < 0) start = 0;
   const hours = [];
-  for (let i=start; i<w.time.length; i++) hours.push({i, ...hourLevel(w, i, site.facing)});
+  for (let i=start; i<w.time.length; i++) hours.push({i, ...hourLevel(w, i, site)});
   // runs of good hours
   const wins = [], near = []; let run = null;
   const close = () => { if (run) (run.n >= S.minHrs ? wins : run.n >= 4 ? near : []).push(run); run = null; };
@@ -570,7 +580,7 @@ function detail(s){
   }
   const wins = R.wins.length ? R.wins.map(r => `<li>${whenText(w, r)} (${r.n} h, ${r.offPct}% offshore or calm)</li>`).join("") : `<li>No window of ${S.minHrs} hours or more.</li>`;
   return `<div class="dbox">
-    <div class="dhead">${compassSVG(s.facing)}<div><b>${esc(s.name)}</b><div class="note">Coast faces ${compass(s.facing)} (${Math.round(s.facing)}°${s.est?", estimated":""}), so offshore wind is from the ${compass(s.facing+180)}. ${coast}. ${src}.</div></div>
+    <div class="dhead">${compassSVG(s.facing)}<div><b>${esc(s.name)}</b><div class="note">Coast faces ${compass(s.facing)} (${Math.round(s.facing)}°${s.fixed?", local knowledge":s.est?", estimated":""}), so offshore wind is ${s.off ? `anything from ${compass(s.off[0])} round through ${compass((s.off[0]+s.off[1])/2)} to ${compass(s.off[1])}, not including ${compass(s.off[0])} and ${compass(s.off[1])} themselves` : `from the ${compass(s.facing+180)}`}. ${coast}. ${src}.</div></div>
     <a href="https://www.google.com/maps/search/?api=1&query=${s.lat.toFixed(5)},${s.lon.toFixed(5)}" target="_blank" rel="noopener">Open in Maps</a>${s.src==="custom"?`<button type="button" class="danger" data-remove="${esc(s.id)}">Remove</button>`:""}</div>
     <ul class="note" style="margin:0;padding-left:18px">${wins}</ul>
     <div class="note">Each column is one hour: bar colour (green offshore or calm, yellow cross-shore, red fails), time, arrow showing where the wind blows to, wind and gust km/h, temperature, rain chance. Shaded columns are night.</div>
