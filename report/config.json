@@ -1,0 +1,19 @@
+{
+  "centre": {"name": "Port Lincoln", "lat": -34.7263, "lon": 135.8597},
+  "radiusKm": 60,
+  "days": 7,
+  "maxListed": 10,
+  "notify": "cjmorgan69",
+  "limits": {
+    "maxWind": 15,
+    "maxGust": 30,
+    "calm": 6,
+    "dirMode": "cross",
+    "tMin": 18,
+    "tMax": 32,
+    "nMin": 10,
+    "rain": 20,
+    "minHrs": 12,
+    "coastKm": 1
+  }
+}

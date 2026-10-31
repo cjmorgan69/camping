@@ -1,0 +1,39 @@
+name: Daily camping report
+
+on:
+  schedule:
+    - cron: "30 19 * * *"   # 6:00 am Adelaide during daylight saving, 5:00 am in winter (GitHub can run it up to about 30 minutes late)
+  workflow_dispatch:         # "Run workflow" button on the Actions tab
+  push:                      # a fresh report whenever the limits or the logic change
+    branches: [main]
+    paths: ["core.js", "report/daily.js", "report/config.json", ".github/workflows/daily-report.yml"]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency: daily-report
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Find this week's camping windows and open the report issue
+        run: node report/daily.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+      # Saving the report as a commit also keeps the repo active, so GitHub does not pause the daily schedule after 60 quiet days.
+      - name: Save the report in the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add report/latest.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Daily camping report"
+            git push
+          fi
