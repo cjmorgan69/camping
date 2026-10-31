@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Eyre Coast Camp Windows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: one column of instrument panels — settings, Port Lincoln outlook, best windows, then a site × day grid that expands into an hourly strip */
+:root{
+  --bg:#f3f6f5; --panel:#ffffff; --ink:#18302f; --muted:#5d7270; --line:#d6e0de;
+  --sea:#0f6e74; --sea-soft:#d8eeee; --sand:#c98b3a;
+  --ideal:#1f8a5b; --ideal-soft:#cfeedd; --fair:#c9a227; --fair-soft:#f5ebc4; --bad:#b8473a; --none:#e7ecea;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1716; --panel:#152221; --ink:#e3eeec; --muted:#93a8a5; --line:#29403e;
+  --sea:#4fc0c4; --sea-soft:#173a3b; --sand:#e0a95a;
+  --ideal:#4cc98d; --ideal-soft:#173d2c; --fair:#e2c158; --fair-soft:#3d3517; --bad:#e57b6d; --none:#1d2c2b;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1716; --panel:#152221; --ink:#e3eeec; --muted:#93a8a5; --line:#29403e;
+  --sea:#4fc0c4; --sea-soft:#173a3b; --sand:#e0a95a;
+  --ideal:#4cc98d; --ideal-soft:#173d2c; --fair:#e2c158; --fair-soft:#3d3517; --bad:#e57b6d; --none:#1d2c2b;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--body)}
+.wrap{max-width:1100px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+h1,h2{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:2.1rem;line-height:1.05}
+h2{font-size:1.35rem}
+.lede{color:var(--muted);margin:4px 0 0;max-width:65ch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:12px;min-width:0}
+.eyebrow{font:600 .72rem/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.status{font-size:.9rem;color:var(--muted)}
+.status b{color:var(--ink)}
+.err{color:var(--bad)}
+/* settings */
+details summary{cursor:pointer;font-weight:600;color:var(--sea)}
+.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px 18px;margin-top:12px}
+.settings label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+.settings label span b{color:var(--ink);font-family:var(--display);font-size:1.05rem}
+input[type=range]{width:100%;accent-color:var(--sea)}
+select,button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 10px}
+button{cursor:pointer}
+button.primary{background:var(--sea);color:var(--panel);border-color:var(--sea);font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,.row:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* Port Lincoln outlook */
+.outlook{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(88px,1fr);gap:8px;overflow-x:auto;padding-bottom:4px}
+.day{border:1px solid var(--line);border-radius:8px;padding:8px;display:grid;gap:2px;text-align:center;font-size:.85rem}
+.day .d{font-weight:700}
+.day .t{font-family:var(--display);font-size:1.25rem}
+.day .t small{color:var(--muted);font-size:.95rem}
+.day .w{color:var(--muted)}
+.day.wet{background:var(--sea-soft)}
+/* windows list */
+.wins{display:grid;gap:8px}
+.win{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;background:var(--panel);text-align:left;width:100%}
+.win:hover{border-color:var(--sea)}
+.win .badge{grid-row:span 2}
+.win .site{font-weight:700;min-width:0}
+.win .when{color:var(--muted);font-size:.88rem;grid-column:2}
+.win .hrs{grid-row:span 2;text-align:right;font-family:var(--display);font-size:1.4rem;line-height:1}
+.win .hrs small{display:block;font-size:.75rem;color:var(--muted);font-family:var(--body)}
+.chip{display:inline-block;font:600 .72rem/1 var(--body);letter-spacing:.05em;text-transform:uppercase;border-radius:20px;padding:4px 8px;background:var(--none);color:var(--muted)}
+.chip.ideal{background:var(--ideal-soft);color:var(--ideal)}
+.chip.fair{background:var(--fair-soft);color:var(--fair)}
+.empty{color:var(--muted);font-style:italic}
+/* compass */
+.compass{width:38px;height:38px;flex:none}
+.compass circle{fill:none;stroke:var(--line);stroke-width:2}
+.compass .sea{fill:var(--sea)}
+.compass text{fill:var(--muted);font:700 8px var(--body)}
+/* grid */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.gridwrap{overflow-x:auto}
+table.grid{border-collapse:separate;border-spacing:3px;width:100%;min-width:560px}
+.grid th{font:600 .75rem var(--body);color:var(--muted);text-align:center;padding:2px;white-space:nowrap}
+.grid th.s{text-align:left}
+.grid td{padding:0}
+.grid td.name,.grid th.s{position:sticky;left:0;z-index:1;background:var(--panel)}
+.grid td.name{padding:4px 6px;white-space:nowrap;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:600px){.grid td.name{max-width:128px;font-size:.88rem}}
+.grid td.name .f{color:var(--muted);font-size:.8rem;margin-left:4px}
+.row{cursor:pointer}
+.row:hover td.name{color:var(--sea)}
+.cell{height:30px;border-radius:5px;background:var(--none);display:grid;place-items:center;font:600 .78rem var(--display);color:var(--muted);min-width:34px}
+.cell.p1{background:var(--fair-soft);color:var(--fair)}
+.cell.p2{background:var(--ideal-soft);color:var(--ideal)}
+.cell.p3{background:var(--ideal);color:var(--panel)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.82rem;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+/* detail */
+.detail td{padding:6px 4px 14px}
+.dbox{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--bg);position:sticky;left:0;width:var(--gw,100%);min-width:0}
+.dhead{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.dhead a{color:var(--sea)}
+.hours{display:flex;gap:2px;overflow-x:auto;padding-bottom:6px}
+.hr{flex:none;width:34px;display:grid;gap:2px;justify-items:center;font-size:.7rem;color:var(--muted)}
+.hr .bar{width:100%;height:8px;border-radius:2px;background:var(--none)}
+.hr .bar.l3{background:var(--ideal)}.hr .bar.l2{background:var(--fair)}.hr .bar.l0{background:var(--bad);opacity:.55}
+.hr.night{background:var(--none);border-radius:4px}
+.hr .tm{font-weight:700;color:var(--ink)}
+.hr .arr{width:14px;height:14px}
+.hr .arr path{fill:var(--ink)}
+.hr .rain{color:var(--sea);font-weight:700}
+.daymark{flex:none;writing-mode:vertical-rl;transform:rotate(180deg);font:700 .7rem var(--body);color:var(--sea);padding:0 2px;border-left:2px solid var(--sea)}
+.note{font-size:.82rem;color:var(--muted);max-width:75ch}
+footer{font-size:.8rem;color:var(--muted);display:grid;gap:6px}
+footer a{color:var(--sea)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Port Lincoln &amp; Eyre Peninsula</div>
+    <h1>Eyre Coast Camp Windows</h1>
+    <p class="lede">Finds stretches of hours when a coastal campground should have light winds blowing off the land, mild to warm temperatures and no rain. Each campground's coast direction is worked out from the OpenStreetMap coastline.</p>
+  </header>
+
+  <section class="panel">
+    <div class="btnrow">
+      <button class="primary" id="refresh" type="button">Refresh forecast</button>
+      <span class="status" id="status">Starting…</span>
+    </div>
+    <details id="setbox">
+      <summary>What counts as a good window</summary>
+      <div class="settings">
+        <label for="maxWind"><span>Max wind <b id="maxWindV"></b> km/h</span><input type="range" id="maxWind" min="5" max="35" step="1"></label>
+        <label for="maxGust"><span>Max gusts <b id="maxGustV"></b> km/h</span><input type="range" id="maxGust" min="10" max="50" step="1"></label>
+        <label for="calm"><span>Wind direction ignored below <b id="calmV"></b> km/h</span><input type="range" id="calm" min="0" max="15" step="1"></label>
+        <label for="dirMode"><span>Wind direction</span>
+          <select id="dirMode">
+            <option value="off">Offshore only</option>
+            <option value="cross">Offshore or cross-shore</option>
+            <option value="any">Any direction</option>
+          </select></label>
+        <label for="tMin"><span>Daytime at least <b id="tMinV"></b> °C</span><input type="range" id="tMin" min="10" max="28" step="1"></label>
+        <label for="tMax"><span>Daytime at most <b id="tMaxV"></b> °C</span><input type="range" id="tMax" min="22" max="42" step="1"></label>
+        <label for="nMin"><span>Overnight at least <b id="nMinV"></b> °C</span><input type="range" id="nMin" min="0" max="20" step="1"></label>
+        <label for="rain"><span>Rain chance at most <b id="rainV"></b> %</span><input type="range" id="rain" min="0" max="60" step="5"></label>
+        <label for="minHrs"><span>Shortest window <b id="minHrsV"></b> hours</span><input type="range" id="minHrs" min="6" max="48" step="1"></label>
+        <label for="coastKm"><span>Campground within <b id="coastKmV"></b> km of the sea</span><input type="range" id="coastKm" min="0.2" max="3" step="0.1"></label>
+        <label for="days"><span>Forecast length</span>
+          <select id="days"><option value="7">7 days</option><option value="10">10 days</option><option value="14">14 days</option></select></label>
+      </div>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>Port Lincoln outlook</h2>
+    <div class="outlook" id="outlook"><span class="empty">Loading…</span></div>
+  </section>
+
+  <section class="panel">
+    <h2>Best camping windows</h2>
+    <div class="wins" id="wins"><span class="empty">Loading…</span></div>
+  </section>
+
+  <section class="panel">
+    <h2>Campgrounds by day</h2>
+    <div class="filters">
+      <label for="region" class="status">Area</label>
+      <select id="region">
+        <option value="all">Whole peninsula</option>
+        <option value="east">East coast (Spencer Gulf)</option>
+        <option value="south">Port Lincoln, Lincoln NP, Coffin Bay</option>
+        <option value="west">West coast (Elliston to Streaky Bay)</option>
+        <option value="far">Far West (Smoky Bay to Fowlers Bay)</option>
+      </select>
+      <label for="sort" class="status">Sort</label>
+      <select id="sort"><option value="score">Best weather first</option><option value="name">Name</option><option value="lat">North to south</option></select>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--ideal)"></i>Part of a full window, offshore or calm</span>
+      <span><i style="background:var(--ideal-soft)"></i>Good hours, not a full window</span>
+      <span><i style="background:var(--fair-soft)"></i>Only cross-shore hours</span>
+      <span>Number = good hours that day. Tap a campground for the hourly view.</span>
+    </div>
+    <div class="gridwrap"><table class="grid" id="grid"></table></div>
+  </section>
+
+  <footer>
+    <p>Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> forecast (BOM ACCESS-G and other models blended), Adelaide time. Campgrounds and coastline: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>, plus a short hand-made list of well-known sites. WikiCamps has no public data feed, so check site details, fees and access in WikiCamps before you go.</p>
+    <p>Offshore means the wind is blowing from the land out to sea at that campground. Coast direction is the way the shoreline faces, worked out from the coastline within about a kilometre of the site; bays, headlands and dunes can still shelter or funnel the wind.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const TZ = "Australia/Adelaide";
+const PL = {lat:-34.7263, lon:135.8597};
+const BBOX = "-35.2,132.2,-31.4,137.9";
+const CACHE_KEY = "eyre-camp-geo-v1";
+
+// Hand list of well-known coastal sites. facing = estimated direction the shore faces (degrees), used only if the coastline cannot be loaded.
+const KNOWN = [
+  ["Tumby Bay foreshore",-34.377,136.103,90],["Lipson Cove",-34.268,136.268,100],["Port Neill foreshore",-34.118,136.349,110],
+  ["Arno Bay",-33.917,136.575,110],["Port Gibbon",-33.794,136.809,150],["Cowell foreshore",-33.684,136.921,90],
+  ["Lucky Bay",-33.703,137.036,60],["Fitzgerald Bay",-32.928,137.722,100],["Point Lowly",-33.000,137.785,160],
+  ["Port Lincoln (Kirton Point)",-34.716,135.879,60],["Louth Bay",-34.558,135.940,90],
+  ["Fisherman Point, Lincoln NP",-34.797,135.958,315],["Surfleet Cove, Lincoln NP",-34.836,135.974,0],
+  ["Taylors Landing, Lincoln NP",-34.870,136.040,20],["Memory Cove, Lincoln NP",-34.968,136.044,150],
+  ["Fishery Bay",-34.910,135.690,170],["Coffin Bay",-34.620,135.471,160],["Yangie Bay, Coffin Bay NP",-34.623,135.332,90],
+  ["Big Yangie, Coffin Bay NP",-34.590,135.300,270],["Black Springs, Coffin Bay NP",-34.540,135.271,90],
+  ["Morgans Landing, Coffin Bay NP",-34.510,135.250,100],["Point Sir Isaac, Coffin Bay NP",-34.435,135.190,80],
+  ["Farm Beach",-34.470,135.330,260],["Greenly Beach",-34.180,135.170,250],["Sheringa Beach",-33.840,134.830,230],
+  ["Walkers Rocks",-33.565,134.858,260],["Elliston (Waterloo Bay)",-33.646,134.887,270],["Venus Bay",-33.236,134.672,150],
+  ["Port Kenny",-33.170,134.690,220],["Baird Bay",-33.140,134.370,260],["Streaky Bay foreshore",-32.796,134.212,300],
+  ["Perlubie Beach",-32.725,134.345,260],["Smoky Bay",-32.377,133.935,260],
+  ["Ceduna foreshore",-32.128,133.677,120],["Cactus Beach (Point Sinclair)",-32.075,132.995,190],["Fowlers Bay",-31.987,132.437,100]
+];
+
+const DEF = {maxWind:15,maxGust:30,calm:6,dirMode:"cross",tMin:18,tMax:32,nMin:10,rain:20,minHrs:12,coastKm:1,days:"10",region:"all",sort:"score"};
+let S = load("eyre-camp-settings", DEF);
+S = Object.assign({}, DEF, S);
+let SITES = [];      // {id,name,lat,lon,facing,coastKm,src,est,region}
+let WX = {};         // site id -> {time[],t[],app[],p[],pp[],ws[],wd[],wg[],day[]}
+let openId = null;
+
+function load(k, d){ try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+const $ = id => document.getElementById(id);
+const status = (html, err) => { const el = $("status"); el.innerHTML = html; el.classList.toggle("err", !!err); };
+
+/* ---------- geometry ---------- */
+const rad = d => d*Math.PI/180, deg = r => r*180/Math.PI;
+function xy(lat, lon, lat0){ return [lon*111.32*Math.cos(rad(lat0)), lat*110.574]; }
+const norm = a => ((a%360)+360)%360;
+const angDiff = (a,b) => { const d = Math.abs(norm(a)-norm(b)); return d>180 ? 360-d : d; };
+const PTS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+const compass = d => PTS[Math.round(norm(d)/22.5)%16];
+
+// OSM coastline ways run with land on the left and sea on the right, so the seaward normal of a segment is its heading + 90°.
+function coastFacing(lat, lon, ways){
+  const [sx, sy] = xy(lat, lon, lat);
+  const segs = []; let best = Infinity;
+  for (const w of ways){
+    const g = w.geometry; if (!g) continue;
+    for (let i=0; i<g.length-1; i++){
+      const [ax, ay] = xy(g[i].lat, g[i].lon, lat), [bx, by] = xy(g[i+1].lat, g[i+1].lon, lat);
+      if (Math.min(Math.abs(ax-sx), Math.abs(bx-sx)) > 6 || Math.min(Math.abs(ay-sy), Math.abs(by-sy)) > 6) continue;
+      const dx = bx-ax, dy = by-ay, L2 = dx*dx+dy*dy || 1e-9;
+      const t = Math.max(0, Math.min(1, ((sx-ax)*dx + (sy-ay)*dy)/L2));
+      const d = Math.hypot(ax+t*dx-sx, ay+t*dy-sy);
+      segs.push({dx, dy, d}); if (d < best) best = d;
+    }
+  }
+  if (!segs.length) return null;
+  let vx = 0, vy = 0;
+  for (const s of segs){
+    if (s.d > best + 1.2) continue;
+    const w = 1/(0.3 + (s.d-best));          // nearest shoreline counts most
+    vx += s.dy*w; vy += -s.dx*w;             // (dy,-dx) = segment turned 90° clockwise, length-weighted
+  }
+  if (Math.hypot(vx, vy) < 1e-6) return null;
+  return {facing: norm(deg(Math.atan2(vx, vy))), km: best};
+}
+
+function region(lat, lon){
+  if (lon < 133.95) return "far";
+  if (lat < -34.38) return "south";
+  if (lon > 135.95 || (lat > -34.0 && lon > 136.3)) return "east";
+  return "west";
+}
+// Keep out Yorke Peninsula's west coast, which shares the bounding box.
+function onEyre(lat, lon){
+  if (lat > -33.4) return lon < 137.85;
+  if (lat > -33.85) return lon < 137.3;
+  return lon < 136.7;
+}
+
+/* ---------- campgrounds + coastline ---------- */
+async function overpass(q){
+  const hosts = ["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+  let last;
+  for (const h of hosts){
+    try{
+      const r = await fetch(h, {method:"POST", body:"data="+encodeURIComponent(q), headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+      if (r.ok) return await r.json();
+      last = new Error("Overpass "+r.status);
+    }catch(e){ last = e; }
+  }
+  throw last;
+}
+
+async function loadSites(force){
+  const cached = load(CACHE_KEY, null);
+  if (!force && cached && Date.now() - cached.at < 30*864e5) return cached.sites;
+  status("Finding campgrounds and coastline (first load can take 20 to 40 seconds)…");
+  const around = KNOWN.map(k => `way["natural"="coastline"](around:2500,${k[1]},${k[2]});`).join("");
+  const q = `[out:json][timeout:120];
+nwr["tourism"~"^(camp_site|caravan_site)$"](${BBOX})->.c;
+.c out center tags;
+(way["natural"="coastline"](around.c:3000);${around});
+out geom;`;
+  const j = await overpass(q);
+  const ways = j.elements.filter(e => e.type === "way" && e.tags && e.tags.natural === "coastline");
+  const camps = j.elements.filter(e => e.tags && /camp_site|caravan_site/.test(e.tags.tourism||""));
+  const out = [];
+  for (const c of camps){
+    const lat = c.lat ?? c.center?.lat, lon = c.lon ?? c.center?.lon;
+    const name = c.tags.name;
+    if (lat == null || !name || !onEyre(lat, lon)) continue;
+    const f = coastFacing(lat, lon, ways);
+    if (!f || f.km > 3) continue;
+    out.push({id:c.type[0]+c.id, name, lat, lon, facing:f.facing, coastKm:f.km, src:"osm", kind:c.tags.tourism==="caravan_site"?"Caravan park":"Campground"});
+  }
+  // Hand-list sites fill gaps only: skip any already in OpenStreetMap (same first word within 10 km, or anything within 1.5 km)
+  // and any whose rough location is not within 1.5 km of the coastline.
+  const km = (a, b) => Math.hypot((a.lon-b.lon)*111.32*Math.cos(rad(a.lat)), (a.lat-b.lat)*110.574);
+  const word = n => n.toLowerCase().split(/[\s,(]+/)[0];
+  for (const [name, lat, lon] of KNOWN){
+    const p = {lat, lon};
+    if (out.some(o => km(o, p) < 1.5 || (km(o, p) < 10 && word(o.name) === word(name)))) continue;
+    const f = coastFacing(lat, lon, ways);
+    if (!f || f.km > 1.5) continue;
+    out.push({id:"k"+name, name, lat, lon, facing:f.facing, coastKm:f.km, src:"list", kind:"Known site"});
+  }
+  const sites = dedupe(out);
+  save(CACHE_KEY, {at:Date.now(), sites});
+  return sites;
+}
+function dedupe(list){
+  const keep = [];
+  for (const s of list){
+    const dup = keep.find(k => k.name.toLowerCase() === s.name.toLowerCase() && Math.abs(k.lat-s.lat) < .02 && Math.abs(k.lon-s.lon) < .02);
+    if (!dup) keep.push(s);
+  }
+  return keep;
+}
+function fallbackSites(){
+  return KNOWN.map(([name, lat, lon, f]) => ({id:"k"+name, name, lat, lon, facing:f, coastKm:null, src:"list", est:true, kind:"Known site"}));
+}
+
+/* ---------- weather ---------- */
+const HV = "temperature_2m,apparent_temperature,precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day";
+async function loadWeather(sites){
+  const days = +S.days, out = {};
+  for (let i=0; i<sites.length; i+=50){
+    const b = sites.slice(i, i+50);
+    status(`Getting forecasts… <b>${Math.min(i+50, sites.length)}</b> of ${sites.length} campgrounds`);
+    const u = `https://api.open-meteo.com/v1/forecast?latitude=${b.map(s=>s.lat.toFixed(3)).join(",")}&longitude=${b.map(s=>s.lon.toFixed(3)).join(",")}&hourly=${HV}&wind_speed_unit=kmh&timezone=${encodeURIComponent(TZ)}&forecast_days=${days}`;
+    const r = await fetch(u); if (!r.ok) throw new Error("Open-Meteo "+r.status);
+    let j = await r.json(); if (!Array.isArray(j)) j = [j];
+    j.forEach((d, k) => { const h = d.hourly; out[b[k].id] = {time:h.time, t:h.temperature_2m, app:h.apparent_temperature, p:h.precipitation, pp:h.precipitation_probability, ws:h.wind_speed_10m, wd:h.wind_direction_10m, wg:h.wind_gusts_10m, day:h.is_day}; });
+  }
+  return out;
+}
+async function loadOutlook(){
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${PL.lat}&longitude=${PL.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant&wind_speed_unit=kmh&timezone=${encodeURIComponent(TZ)}&forecast_days=${S.days}`;
+  const r = await fetch(u); if (!r.ok) throw new Error("Open-Meteo "+r.status);
+  return (await r.json()).daily;
+}
+
+/* ---------- scoring ---------- */
+function nowKey(){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:00`;
+}
+// level 3 = good and offshore or calm, 2 = good but cross-shore, 0 = fails
+function hourLevel(w, i, facing){
+  const ws = w.ws[i], wg = w.wg[i], t = w.t[i], day = w.day[i];
+  const why = [];
+  if (ws > S.maxWind) why.push("windy");
+  if (wg > S.maxGust) why.push("gusty");
+  if ((w.p[i] ?? 0) > 0.1 || (w.pp[i] ?? 0) > S.rain) why.push("rain");
+  if (day ? t < S.tMin : t < S.nMin) why.push("cool");
+  if (day && t > S.tMax) why.push("hot");
+  let rel = "calm";
+  if (ws >= S.calm){
+    const d = angDiff(w.wd[i], facing);
+    rel = d >= 120 ? "offshore" : d >= 60 ? "cross-shore" : "onshore";
+  }
+  if (S.dirMode !== "any"){
+    if (rel === "onshore") why.push("onshore");
+    if (rel === "cross-shore" && S.dirMode === "off") why.push("cross-shore");
+  }
+  const lvl = why.length ? 0 : (rel === "cross-shore" ? 2 : 3);
+  return {lvl, rel, why};
+}
+
+function analyse(site){
+  const w = WX[site.id]; if (!w) return null;
+  const nk = nowKey();
+  let start = w.time.findIndex(t => t >= nk); if (start < 0) start = 0;
+  const hours = [];
+  for (let i=start; i<w.time.length; i++) hours.push({i, ...hourLevel(w, i, site.facing)});
+  // runs of good hours
+  const wins = [], near = []; let run = null;
+  const close = () => { if (run) (run.n >= S.minHrs ? wins : run.n >= 4 ? near : []).push(run); run = null; };
+  for (const h of hours){
+    if (h.lvl){
+      if (!run) run = {site, a:h.i, b:h.i, n:0, q:0, wmax:0, gmax:0, tmin:99, tmax:-99, dirs:[]};
+      run.b = h.i; run.n++; run.q += h.lvl === 3 ? 1 : .6;
+      run.wmax = Math.max(run.wmax, w.ws[h.i]); run.gmax = Math.max(run.gmax, w.wg[h.i]);
+      run.tmin = Math.min(run.tmin, w.t[h.i]); run.tmax = Math.max(run.tmax, w.t[h.i]); run.dirs.push(w.wd[h.i]);
+    } else close();
+  }
+  close();
+  [...wins, ...near].forEach(r => { r.quality = r.q/r.n; r.score = Math.min(r.n, 48) * r.quality; r.dir = meanDir(r.dirs); r.offPct = Math.round(100*hours.filter(h=>h.i>=r.a&&h.i<=r.b&&h.lvl===3).length/r.n); });
+  // per day summary
+  const inWin = new Set(); wins.forEach(r => { for (let i=r.a; i<=r.b; i++) inWin.add(i); });
+  const byDay = {};
+  for (const h of hours){
+    const d = w.time[h.i].slice(0,10);
+    const o = byDay[d] ??= {good:0, ideal:0, win:false};
+    if (h.lvl) o.good++;
+    if (h.lvl === 3) o.ideal++;
+    if (inWin.has(h.i)) o.win = true;
+  }
+  const best = wins.reduce((m, r) => Math.max(m, r.score), 0) + hours.filter(h=>h.lvl).length/100;
+  return {hours, wins, near, byDay, best};
+}
+function meanDir(ds){ let x=0, y=0; ds.forEach(d=>{x+=Math.sin(rad(d)); y+=Math.cos(rad(d));}); return norm(deg(Math.atan2(x,y))); }
+
+/* ---------- formatting ---------- */
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function dayName(iso){ const [y,m,d] = iso.slice(0,10).split("-").map(Number); const dt = new Date(Date.UTC(y,m-1,d)); return `${DOW[dt.getUTCDay()]} ${d} ${MON[m-1]}`; }
+function hr12(iso){ const h = +iso.slice(11,13); return h===0 ? "12am" : h<12 ? h+"am" : h===12 ? "12pm" : (h-12)+"pm"; }
+function whenText(w, r){ const a = w.time[r.a], b = w.time[r.b]; return a.slice(0,10)===b.slice(0,10) ? `${dayName(a)}, ${hr12(a)} to ${hr12(b)}` : `${dayName(a)} ${hr12(a)} to ${dayName(b)} ${hr12(b)}`; }
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function compassSVG(facing){
+  // wedge shows the sea side
+  const a1 = rad(facing-45), a2 = rad(facing+45), r = 15;
+  const p = (a) => `${19+r*Math.sin(a)},${19-r*Math.cos(a)}`;
+  return `<svg class="compass" viewBox="0 0 38 38" aria-label="Coast faces ${compass(facing)}" role="img"><circle cx="19" cy="19" r="15"/><path class="sea" d="M19,19 L${p(a1)} A15,15 0 0 1 ${p(a2)} Z" opacity=".75"/><text x="19" y="9" text-anchor="middle">N</text></svg>`;
+}
+const arrow = d => `<svg class="arr" viewBox="0 0 14 14" style="transform:rotate(${norm(d+180)}deg)" aria-hidden="true"><path d="M7 1 L11 9 L7.8 7.6 L7.8 13 L6.2 13 L6.2 7.6 L3 9 Z"/></svg>`;
+
+/* ---------- render ---------- */
+let RES = {};
+function visibleSites(){
+  return SITES.filter(s => (s.coastKm == null || s.coastKm <= S.coastKm) && (S.region === "all" || region(s.lat, s.lon) === S.region));
+}
+function render(){
+  RES = {}; SITES.forEach(s => RES[s.id] = analyse(s));
+  renderWins(); renderGrid();
+}
+function renderWins(){
+  let all = [];
+  visibleSites().forEach(s => RES[s.id]?.wins.forEach(r => all.push(r)));
+  const el = $("wins");
+  let intro = "";
+  if (!all.length){
+    visibleSites().forEach(s => RES[s.id]?.near.forEach(r => all.push(r)));
+    intro = `<p class="empty">No window of ${S.minHrs} hours or more meets your settings in this forecast. ${all.length ? "These are the longest shorter spells." : "Try cross-shore winds or higher wind limits."}</p>`;
+  }
+  all.sort((a,b) => b.score - a.score);
+  el.innerHTML = intro + all.slice(0, 12).map(r => {
+    const w = WX[r.site.id], ideal = r.offPct >= 70;
+    return `<button class="win" type="button" data-id="${esc(r.site.id)}">
+      <span class="badge">${compassSVG(r.site.facing)}</span>
+      <span class="site">${esc(r.site.name)} <span class="chip ${ideal?"ideal":"fair"}">${ideal?"mostly offshore":"some cross-shore"}</span></span>
+      <span class="hrs num">${r.n}<small>hours</small></span>
+      <span class="when">${whenText(w, r)} · wind up to ${Math.round(r.wmax)} km/h (gusts ${Math.round(r.gmax)}), mostly ${compass(r.dir)} · ${Math.round(r.tmin)} to ${Math.round(r.tmax)} °C · coast faces ${compass(r.site.facing)}</span>
+    </button>`;
+  }).join("");
+}
+function renderGrid(){
+  const list = visibleSites().filter(s => RES[s.id]);
+  if (S.sort === "name") list.sort((a,b) => a.name.localeCompare(b.name));
+  else if (S.sort === "lat") list.sort((a,b) => b.lat - a.lat);
+  else list.sort((a,b) => RES[b.id].best - RES[a.id].best);
+  const days = list.length ? Object.keys(RES[list[0].id].byDay) : [];
+  let h = `<thead><tr><th class="s">Campground · coast faces</th>${days.map(d=>`<th>${dayName(d).replace(/ \w+$/,"")}</th>`).join("")}</tr></thead><tbody>`;
+  for (const s of list){
+    const R = RES[s.id];
+    h += `<tr class="row" tabindex="0" data-id="${esc(s.id)}"><td class="name" title="${esc(s.name)}">${esc(s.name)}<span class="f">${compass(s.facing)}${s.est?"?":""}</span></td>`;
+    for (const d of days){
+      const o = R.byDay[d] || {good:0, ideal:0, win:false};
+      const cls = o.win && o.ideal ? "p3" : o.ideal ? "p2" : o.good ? "p1" : "";
+      h += `<td><div class="cell ${cls}">${o.good||""}</div></td>`;
+    }
+    h += `</tr>`;
+    if (s.id === openId) h += `<tr class="detail"><td colspan="${days.length+1}">${detail(s)}</td></tr>`;
+  }
+  h += `</tbody>`;
+  const gw = document.querySelector(".gridwrap");
+  gw.style.setProperty("--gw", (gw.clientWidth - 12) + "px");
+  $("grid").innerHTML = list.length ? h :`<tbody><tr><td class="empty">No campgrounds in this area within ${S.coastKm} km of the sea.</td></tr></tbody>`;
+}
+function detail(s){
+  const w = WX[s.id], R = RES[s.id];
+  const src = s.src === "osm" ? `${esc(s.kind)} from OpenStreetMap` : "From the hand-made list (location approximate)";
+  const coast = s.coastKm == null ? "Coast direction estimated by hand" : `${s.coastKm < 0.1 ? "On the shore" : (s.coastKm.toFixed(1)+" km from the sea")}`;
+  let strip = "", last = "";
+  for (const h of R.hours){
+    const t = w.time[h.i], d = t.slice(0,10);
+    if (d !== last){ strip += `<div class="daymark">${dayName(d)}</div>`; last = d; }
+    const rain = w.pp[h.i] >= 20 ? `<span class="rain">${w.pp[h.i]}%</span>` : `<span>&nbsp;</span>`;
+    strip += `<div class="hr${w.day[h.i]?"":" night"}" title="${dayName(t)} ${hr12(t)}: ${h.lvl?"good":h.why.join(", ")} · ${h.rel}">
+      <div class="bar l${h.lvl}"></div><span class="tm">${hr12(t)}</span>${arrow(w.wd[h.i])}
+      <span class="num">${Math.round(w.ws[h.i])}</span><span>${Math.round(w.wg[h.i])}</span><span class="num">${Math.round(w.t[h.i])}°</span>${rain}</div>`;
+  }
+  const wins = R.wins.length ? R.wins.map(r => `<li>${whenText(w, r)} (${r.n} h, ${r.offPct}% offshore or calm)</li>`).join("") : `<li>No window of ${S.minHrs} hours or more.</li>`;
+  return `<div class="dbox">
+    <div class="dhead">${compassSVG(s.facing)}<div><b>${esc(s.name)}</b><div class="note">Coast faces ${compass(s.facing)} (${Math.round(s.facing)}°${s.est?", estimated":""}), so offshore wind is from the ${compass(s.facing+180)}. ${coast}. ${src}.</div></div>
+    <a href="https://www.google.com/maps/search/?api=1&query=${s.lat.toFixed(5)},${s.lon.toFixed(5)}" target="_blank" rel="noopener">Open in Maps</a></div>
+    <ul class="note" style="margin:0;padding-left:18px">${wins}</ul>
+    <div class="note">Each column is one hour: bar colour (green offshore or calm, yellow cross-shore, red fails), time, arrow showing where the wind blows to, wind and gust km/h, temperature, rain chance. Shaded columns are night.</div>
+    <div class="hours">${strip}</div>
+  </div>`;
+}
+function renderOutlook(d){
+  $("outlook").innerHTML = d.time.map((t,i) => `<div class="day${d.precipitation_probability_max[i]>=40?" wet":""}">
+    <span class="d">${dayName(t).replace(/ \w+$/,"")}</span>
+    <span class="t">${Math.round(d.temperature_2m_max[i])}° <small>${Math.round(d.temperature_2m_min[i])}°</small></span>
+    <span class="w">${compass(d.wind_direction_10m_dominant[i])} ${Math.round(d.wind_speed_10m_max[i])} km/h</span>
+    <span class="w">gusts ${Math.round(d.wind_gusts_10m_max[i])}</span>
+    <span class="w">${d.precipitation_probability_max[i]}% · ${d.precipitation_sum[i].toFixed(1)} mm</span></div>`).join("");
+}
+
+/* ---------- settings ---------- */
+const RANGES = ["maxWind","maxGust","calm","tMin","tMax","nMin","rain","minHrs","coastKm"];
+function syncInputs(){
+  RANGES.forEach(k => { $(k).value = S[k]; $(k+"V").textContent = S[k]; });
+  ["dirMode","days","region","sort"].forEach(k => $(k).value = S[k]);
+}
+RANGES.forEach(k => $(k).addEventListener("input", e => { S[k] = +e.target.value; $(k+"V").textContent = S[k]; save("eyre-camp-settings", S); if (SITES.length && Object.keys(WX).length) render(); }));
+["dirMode","region","sort"].forEach(k => $(k).addEventListener("change", e => { S[k] = e.target.value; save("eyre-camp-settings", S); render(); }));
+$("days").addEventListener("change", e => { S.days = e.target.value; save("eyre-camp-settings", S); run(false); });
+$("refresh").addEventListener("click", () => run(false));
+$("refresh").addEventListener("dblclick", () => run(true));
+
+function toggle(id){ openId = openId === id ? null : id; renderGrid(); }
+$("grid").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) toggle(r.dataset.id); });
+$("grid").addEventListener("keydown", e => { const r = e.target.closest(".row"); if (r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); toggle(r.dataset.id); } });
+$("wins").addEventListener("click", e => {
+  const b = e.target.closest(".win"); if (!b) return;
+  openId = b.dataset.id; S.region = "all"; $("region").value = "all"; renderGrid();
+  document.querySelector(`.row[data-id="${CSS.escape(openId)}"]`)?.scrollIntoView({behavior:"smooth", block:"start"});
+});
+
+/* ---------- run ---------- */
+let busy = false;
+async function run(forceSites){
+  if (busy) return; busy = true; $("refresh").disabled = true;
+  try{
+    loadOutlook().then(renderOutlook).catch(e => $("outlook").innerHTML = `<span class="err">Port Lincoln forecast did not load (${esc(e.message)}).</span>`);
+    let note = "";
+    try{ SITES = await loadSites(forceSites); }
+    catch(e){ SITES = fallbackSites(); note = ` OpenStreetMap did not answer (${esc(e.message)}), so only the hand-made list is shown with estimated coast directions.`; }
+    WX = await loadWeather(SITES);
+    render();
+    const ts = new Intl.DateTimeFormat("en-AU",{timeZone:TZ,weekday:"short",hour:"numeric",minute:"2-digit"}).format(new Date());
+    status(`<b>${SITES.length}</b> coastal campgrounds checked, forecast updated ${ts}.${note}`, !!note);
+  }catch(e){
+    status(`The forecast did not load (${esc(e.message)}). Check your connection and tap Refresh.`, true);
+  }finally{ busy = false; $("refresh").disabled = false; }
+}
+addEventListener("resize", () => { if (openId && Object.keys(RES).length) renderGrid(); });
+syncInputs();
+run(false);
+</script>
+</body>
+</html>
