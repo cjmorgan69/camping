@@ -1,6 +1,6 @@
-# Camping windows near Port Lincoln: Tue 10 Nov
+# Camping windows near Port Lincoln: Wed 11 Nov
 
-Checked 36 coastal campgrounds within 60 km of Port Lincoln for the next 7 days.
+Checked 30 coastal campgrounds within 60 km of Port Lincoln for the next 7 days.
 
 ## Best windows
 
@@ -10,13 +10,13 @@ None. No campground has 12 hours in a row that meet your limits this week.
 
 | Day | Best spot | Good hours |
 | --- | --- | --- |
-| Tue 10 Nov | None | 0 |
-| Wed 11 Nov | Coffin Bay Caravan Park | 4 |
-| Thu 12 Nov | Frenchman's North & South | 12 |
+| Wed 11 Nov | Coffin Bay Caravan Park | 3 |
+| Thu 12 Nov | Farm Beach Campground | 14 |
 | Fri 13 Nov | Fisherman Point Campground | 2 |
-| Sat 14 Nov | Louth Bay North Rest Area | 4 |
+| Sat 14 Nov | Coffin Bay Caravan Park | 6 |
 | Sun 15 Nov | Coffin Bay Caravan Park | 6 |
-| Mon 16 Nov | Farm Beach Campground | 4 |
+| Mon 16 Nov | Farm Beach Campground | 5 |
+| Tue 17 Nov | Coffin Bay Caravan Park | 4 |
 
 Limits: wind up to 15 km/h, gusts up to 30 km/h, wind direction offshore or cross-shore (ignored below 6 km/h), daytime 18 to 32 °C, overnight at least 10 °C, rain chance up to 20%, windows of 12 hours or more, campgrounds within 1 km of the sea. Change them in report/config.json.
 
